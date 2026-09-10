@@ -4,6 +4,8 @@ Del control de pedidos a la operación diaria
 
 ## El objetivo
 
+Queremos conocer **cómo piensas, qué metodología sigues, cómo planteas un sistema y cómo presentas tus decisiones**.
+
 Bacci suministra textil al *mass market*. Trabaja con un Navision antiguo, Excel y Outlook, y quiere modernizar su ERP en los próximos seis meses sin interrumpir la actividad.
 
 Construye una **automatización y una aplicación sencilla** para que operaciones sepa **qué queda por servir, qué necesita atención y qué acción tomar**, cruzando pedidos y correos. Justifica tu priorización.
@@ -26,7 +28,7 @@ Datos ficticios. Corte inicial: **10/09/2026 a las 10:00, hora de Madrid**. Trab
 
 1. **Automatización.** Un proceso repetible que lea los archivos, cruce la información e incorpore nuevos correos sin editar filas manualmente.
 2. **Aplicación mínima.** Una lista priorizada con pedido y línea, cliente, unidades pendientes, motivo y acción propuesta; filtros por cliente y prioridad; y un detalle con los datos y correos que justifican cada caso. Incluye los casos sin resolver. Basta una pantalla con su detalle, ejecutable localmente.
-3. **Validación.** Comprueba cálculos, cruces y casos dudosos, mostrando resultados esperados frente a obtenidos. Demuestra la repetición del proceso y mide su tiempo con los archivos completos.
+3. **Validación.** Justifica y ejecuta tus comprobaciones sobre cálculos, cruces y casos dudosos, mostrando resultados esperados frente a obtenidos. Demuestra la repetición del proceso y mide su tiempo con los archivos completos.
 
 Los datos contienen anomalías. Explica tus supuestos, las limitaciones y qué decisiones dejarías a una persona.
 
@@ -44,6 +46,6 @@ Sirve con la muestra y el conjunto completo. Puedes recalcular todo o procesar l
 
 Haz un **fork**. Conserva el enunciado y añade al README instrucciones, resultados, validaciones y una explicación breve de las entradas diarias, la conexión con Navision y Outlook y la migración del ERP.
 
-Incluye un **vídeo** con este orden: **problema** y cómo lo has entendido; **proceso** seguido y decisiones para llegar a la solución; **demostración** de la solución y sus validaciones. Comparte las URL del fork y del vídeo con Bacci y comprueba el acceso.
+Incluye un **vídeo dirigido al equipo de Bacci** con este orden: **problema** y cómo lo has entendido; **proceso** seguido y decisiones para llegar a la solución; **demostración** de la solución y sus validaciones. Comparte las URL del fork y del vídeo con Bacci y comprueba el acceso.
 
 El alcance es un **prototipo local**. Herramientas libres. Puedes usar IA explicando cómo verificaste su trabajo. Prioriza y documenta lo pendiente; las conexiones reales y la puesta en producción solo deben explicarse.
