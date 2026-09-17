@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+bacci.db
+.pytest_cache/

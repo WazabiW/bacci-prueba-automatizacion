@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de pedidos · Bacci</title>
+<style>
+  :root{
+    --tinta:#1b1d21;
+    --tinta-suave:#5d626b;
+    --papel:#f4f2ee;
+    --lino:#ffffff;
+    --hilo:#e3dfd7;
+    --hilo-fuerte:#cfc9bd;
+    --nuevo:#2f5d8a;
+    --alerta:#b3261e;
+    --aviso:#9a6a00;
+    --calma:#3a6b5c;
+    --sel:#eceae4;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; overflow:hidden}
+  body{
+    margin:0; background:var(--papel); color:var(--tinta);
+    font:14px/1.45 "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-variant-numeric:tabular-nums;
+  }
+  header{
+    display:flex; align-items:baseline; gap:24px; flex-wrap:wrap;
+    padding:16px 24px; background:var(--lino); border-bottom:1px solid var(--hilo);
+    position:sticky; top:0; z-index:5;
+  }
+  h1{font-size:16px; font-weight:600; margin:0; letter-spacing:-.01em}
+  h1 span{color:var(--tinta-suave); font-weight:400}
+  .controles{display:flex; gap:8px; align-items:center; margin-left:auto; flex-wrap:wrap}
+  select,input[type=search],button{
+    font:inherit; padding:6px 11px; border:1px solid var(--hilo-fuerte);
+    background:var(--lino); color:var(--tinta); border-radius:7px;
+    transition:border-color .15s, background .15s, box-shadow .15s;
+  }
+  select:hover,input[type=search]:hover,button:hover{border-color:var(--tinta-suave)}
+  button{cursor:pointer}
+  button.principal{background:var(--tinta); color:var(--lino); border-color:var(--tinta)}
+  button.principal:hover{background:#000; border-color:#000}
+  button.principal:disabled{opacity:.55; cursor:progress}
+  input[type=search]{min-width:170px}
+  button:focus-visible,select:focus-visible,input:focus-visible,tr:focus-visible{
+    outline:2px solid var(--tinta); outline-offset:1px;
+  }
+  label.casilla{display:flex; align-items:center; gap:5px; color:var(--tinta-suave)}
+
+  .cifras{display:flex; gap:34px; padding:13px 24px; background:var(--lino);
+    border-bottom:1px solid var(--hilo); flex-wrap:wrap}
+  .cifra b{display:block; font-size:21px; font-weight:600; letter-spacing:-.02em; line-height:1.15}
+  .cifra span{color:var(--tinta-suave); font-size:11.5px; text-transform:uppercase; letter-spacing:.05em}
+  .cifra.destacada b{color:var(--nuevo)}
+
+  .pestanas{display:flex; gap:0; padding:0 24px; background:var(--lino);
+    border-bottom:1px solid var(--hilo); align-items:center; flex-wrap:wrap}
+  .pestanas button{
+    border:0; border-bottom:2px solid transparent; background:none;
+    padding:11px 4px; margin-right:22px; color:var(--tinta-suave); border-radius:0;
+  }
+  .pestanas button[aria-selected=true]{color:var(--tinta); border-bottom-color:var(--tinta); font-weight:600}
+
+  main{display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:0; flex:1; min-height:0}
+  .lista{overflow:auto; min-width:0}
+  table{table-layout:auto}
+  table{border-collapse:collapse; width:100%}
+  th{
+    position:sticky; top:0; background:var(--papel); text-align:left;
+    font-size:11.5px; font-weight:600; color:var(--tinta-suave);
+    padding:9px 12px; border-bottom:1px solid var(--hilo-fuerte);
+    white-space:nowrap; text-transform:uppercase; letter-spacing:.05em;
+    user-select:none;
+  }
+  th[data-col]{cursor:pointer}
+  th[data-col]:hover{color:var(--tinta)}
+  .chevron{display:inline-block; width:8px; margin-left:5px; opacity:.25}
+  th[aria-sort] .chevron{opacity:1}
+  th[aria-sort=ascending] .chevron::after{content:"\25B2"; font-size:8px}
+  th[aria-sort=descending] .chevron::after{content:"\25BC"; font-size:8px}
+  th[data-col]:not([aria-sort]) .chevron::after{content:"\25BE"; font-size:9px}
+  td{padding:9px 12px; border-bottom:1px solid var(--hilo); vertical-align:top}
+  tbody tr{cursor:pointer; transition:background .1s}
+  tbody tr:hover{background:var(--lino)}
+  tbody tr[aria-selected=true]{background:var(--sel)}
+  tbody tr.revisado td{color:var(--tinta-suave)}
+
+  /* La urgencia se lee en el grosor del filo, no en un color decorativo. */
+  td.filo{padding-left:0; border-left:0}
+  .marca{display:inline-block; width:4px; height:1.35em; vertical-align:-3px; margin-right:10px;
+    border-radius:2px; background:var(--hilo-fuerte)}
+  .marca.alta{width:9px; background:var(--alerta)}
+  .marca.media{width:6px; background:var(--aviso)}
+  .marca.baja{background:var(--calma)}
+
+  .nuevo{display:inline-block; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--nuevo); border:1px solid var(--nuevo); border-radius:20px;
+    padding:1px 7px; margin-left:7px; vertical-align:1px}
+  tbody tr.es-nuevo{background:#f0f5fa}
+  tbody tr.es-nuevo:hover{background:#e8f0f8}
+  .accion-celda{min-width:16rem; color:var(--tinta)}
+  .num{text-align:right; white-space:nowrap}
+  .apagado{color:var(--tinta-suave)}
+  .aviso-dato{color:var(--aviso); cursor:help}
+  .swatch{display:inline-block; width:9px; height:9px; border:1px solid var(--hilo);
+    margin-right:5px; vertical-align:baseline}
+
+  #panel-info{background:var(--lino); border-bottom:1px solid var(--hilo); padding:16px 20px}
+  .info-caja,aside{position:relative}
+  .cerrar{
+    position:absolute; top:0; right:0; border:0; background:none; cursor:pointer;
+    font-size:22px; line-height:1; padding:2px 8px; color:var(--tinta-suave);
+    border-radius:6px;
+  }
+  .cerrar:hover{background:var(--papel); color:var(--tinta)}
+  aside .cerrar{top:14px; right:16px}
+  .info-caja h3{font-size:14px; margin:0 0 6px}
+  .info-caja > p{margin:0 0 12px; color:var(--tinta-suave); max-width:80ch}
+  .info-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:22px}
+  .info-cols h4{font-size:12px; margin:0 0 6px; text-transform:uppercase; letter-spacing:.04em}
+  .info-cols h4 span{text-transform:none; letter-spacing:0; color:var(--tinta-suave); font-weight:400}
+  table.mini{width:100%; margin-bottom:8px}
+  table.mini td{padding:2px 0; border:0; font-size:13px}
+  table.mini td:last-child{text-align:right; font-weight:600; width:3em}
+  .nota{color:var(--tinta-suave); font-size:12.5px; margin:6px 0 0; max-width:60ch}
+  aside{border-left:1px solid var(--hilo); background:var(--lino); overflow:auto; padding:20px 22px}
+  aside h2{font-size:14px; margin:0 0 2px}
+  aside .sub{color:var(--tinta-suave); margin-bottom:14px}
+  dl{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:0 0 16px}
+  dt{color:var(--tinta-suave)}
+  dd{margin:0}
+  .accion{background:var(--papel); border-left:3px solid var(--tinta); border-radius:0 7px 7px 0;
+    padding:11px 13px; margin-bottom:18px; line-height:1.5}
+  .correo{border-top:1px solid var(--hilo); padding:12px 0}
+  .correo .meta{color:var(--tinta-suave); font-size:12px; display:flex; gap:8px; flex-wrap:wrap}
+  .correo .cuerpo{margin-top:5px; white-space:pre-wrap}
+  .tachado{text-decoration:line-through; color:var(--tinta-suave)}
+  .vacio{padding:40px 20px; color:var(--tinta-suave); max-width:46ch}
+  .pie{display:flex; align-items:center; gap:10px; padding:14px 12px;
+    color:var(--tinta-suave); font-size:13px}
+  .pie button{padding:4px 10px; font-size:13px}
+  .desglose{font-size:12px; color:var(--tinta-suave)}
+  body{display:flex; flex-direction:column}
+  @media (max-width:900px){
+    html,body{overflow:auto; height:auto}
+    main{grid-template-columns:1fr; height:auto}
+    aside{border-left:0; border-top:1px solid var(--hilo)}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Control de pedidos <span>· operaciones</span></h1>
+  <div class="controles">
+    <select id="dataset">
+      <option value="muestra">Muestra (100 pedidos)</option>
+      <option value="full">Completo (20.000 pedidos)</option>
+    </select>
+    <label class="casilla"><input type="checkbox" id="actualizacion"> Incorporar correos nuevos</label>
+    <button class="principal" id="procesar">Procesar</button>
+  </div>
+</header>
+
+<div class="cifras" id="cifras"></div>
+
+<div class="pestanas" role="tablist">
+  <button role="tab" id="tab-acc" aria-selected="true">Accionables</button>
+  <button role="tab" id="tab-req" aria-selected="false">Requieren decisión</button>
+  <div class="controles" style="padding:5px 0">
+    <select id="f-cliente"><option value="">Todos los clientes</option></select>
+    <select id="f-prioridad">
+      <option value="">Cualquier prioridad</option>
+      <option value="alta">Alta (65+)</option>
+      <option value="media">Media (40–64)</option>
+      <option value="baja">Baja (&lt;40)</option>
+    </select>
+    <select id="f-tipo"><option value="">Cualquier petición</option></select>
+    <input type="search" id="f-texto" placeholder="Pedido o cliente">
+    <label class="casilla" id="caja-nuevos" hidden><input type="checkbox" id="f-nuevos"> Solo novedades</label>
+    <button id="info" aria-expanded="false" title="Cómo se calcula la prioridad">Cómo se prioriza</button>
+  </div>
+</div>
+
+<div id="panel-info" hidden>
+  <div class="info-caja">
+    <button class="cerrar" id="cerrar-info" aria-label="Cerrar">&times;</button>
+    <h3>Cómo se calcula la prioridad</h3>
+    <p>Escala 0–100. Tres factores que suman. Son parámetros configurables,
+       no código: si para Bacci pesa más el importe que el volumen, se cambia un número.</p>
+    <div class="info-cols">
+      <div>
+        <h4>Fecha de compromiso <span>hasta 50</span></h4>
+        <table class="mini">
+          <tr><td>Vencida hace más de 7 días</td><td>50</td></tr>
+          <tr><td>Vencida entre 1 y 7 días</td><td>40</td></tr>
+          <tr><td>Vence hoy</td><td>30</td></tr>
+          <tr><td>Vence en 1–3 días</td><td>20</td></tr>
+          <tr><td>Vence en 4–14 días</td><td>10</td></tr>
+          <tr><td>Vence en más de 14 días</td><td>0</td></tr>
+          <tr><td>Sin fecha en el ERP</td><td>15</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4>Petición del cliente <span>hasta 30</span></h4>
+        <table class="mini">
+          <tr><td>Cancelación</td><td>30</td></tr>
+          <tr><td>Adelanto</td><td>25</td></tr>
+          <tr><td>Cambio de fecha</td><td>20</td></tr>
+          <tr><td>Consulta de estado</td><td>10</td></tr>
+          <tr><td>Acuse o sin correo</td><td>0</td></tr>
+        </table>
+        <p class="nota">Una cancelación pesa más que un adelanto porque cada día
+           que pasa se produce algo que nadie va a pagar. Una consulta puntúa poco:
+           se debe una respuesta, no mercancía.</p>
+      </div>
+      <div>
+        <h4>Volumen pendiente <span>hasta 20</span></h4>
+        <table class="mini">
+          <tr><td>Percentil 90 o superior</td><td>20</td></tr>
+          <tr><td>Percentil 70–90</td><td>15</td></tr>
+          <tr><td>Percentil 40–70</td><td>10</td></tr>
+          <tr><td>Resto</td><td>5</td></tr>
+        </table>
+        <p class="nota">Por percentil y no por unidades absolutas, para que una
+           línea crítica pequeña no quede sepultada bajo un pedido grande.</p>
+      </div>
+    </div>
+    <p class="nota"><strong>Dos carriles.</strong> Lo que requiere decisión humana
+       no se puntúa: no es menos urgente, es que está bloqueado. Se ordena por
+       antigüedad para que no se pudra.</p>
+    <p class="nota">El desglose de cada caso (fecha + petición + volumen) aparece
+       en el panel de detalle al seleccionar una fila.</p>
+  </div>
+</div>
+
+<main>
+  <div class="lista" id="lista"><p class="vacio">Elige un conjunto de datos y pulsa Procesar. El proceso lee los ficheros, cruza pedidos con correos y ordena lo que operaciones debe atender hoy.</p></div>
+  <aside id="detalle"><p class="apagado">Selecciona una fila para ver el pedido y los correos que lo justifican.</p></aside>
+</main>
+
+<script>
+let datos = null, vista = 'acc', sel = null;
+// Cada carril mantiene su propio orden: en accionables manda la puntuación,
+// en el de decisión manda la antigüedad (que no se pudran).
+const ordenes = {acc:{col:'puntuacion', asc:false}, req:{col:'received_at', asc:true}};
+const orden = () => ordenes[vista];
+// Con el conjunto completo hay ~16.700 casos: pintarlos todos bloquea el
+// navegador. Se muestran por tramos; los filtros operan sobre el total.
+const TRAMO = 200;
+let visibles = TRAMO;
+
+const $ = s => document.querySelector(s);
+const esc = t => (t ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nivel = p => p >= 65 ? 'alta' : p >= 40 ? 'media' : 'baja';
+const ETIQUETA = {cancelacion:'Cancelación', adelanto:'Adelanto', cambio_fecha:'Cambio de fecha',
+  consulta_estado:'Consulta de estado', sin_accion:'Sin acción', sin_correo:'Sin correo'};
+
+$('#procesar').onclick = async () => {
+  const b = $('#procesar'); b.disabled = true; b.textContent = 'Procesando…';
+  $('#lista').innerHTML = '<p class="vacio">Leyendo ficheros y cruzando datos…</p>';
+  try{
+    await fetch('/api/procesar', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({dataset:$('#dataset').value, con_actualizacion:$('#actualizacion').checked})});
+    datos = await (await fetch('/api/casos')).json();
+    sel = null; visibles = TRAMO; poblarFiltros(); pintarCifras(); pintar();
+  }catch(e){
+    $('#lista').innerHTML = '<p class="vacio">No se ha podido procesar. Revisa la consola del servidor y vuelve a intentarlo.</p>';
+  }
+  b.disabled = false; b.textContent = 'Procesar';
+};
+
+function pintarCifras(){
+  const m = datos.metricas;
+  const c = [
+    ['Líneas con pendiente', m.pedidos_con_pendiente],
+    ['Accionables', m.casos_accionables],
+    ['Requieren decisión', m.casos_requiere_decision],
+    ['Correos únicos', m.correos_correos_unicos],
+    ['Reentregas descartadas', m.correos_reentregas_descartadas],
+    ...(m.casos_nuevos_del_lote ? [['Casos nuevos del lote', m.casos_nuevos_del_lote, true]] : []),
+    ['Corte', m.corte],
+    ['Proceso', m.t_total_s + ' s'],
+  ];
+  $('#cifras').innerHTML = c.map(([k,v,dest]) =>
+    `<div class="cifra${dest?' destacada':''}"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+}
+
+function poblarFiltros(){
+  $('#f-cliente').innerHTML = '<option value="">Todos los clientes</option>' +
+    datos.clientes.map(c => `<option>${esc(c)}</option>`).join('');
+  const ORDEN = ['cancelacion','adelanto','cambio_fecha','consulta_estado','sin_accion','sin_correo'];
+  const presentes = new Set(datos.accionables.map(a => a.intencion));
+  const tipos = ORDEN.filter(t => presentes.has(t));
+  const hayNuevos = datos.accionables.some(a => a.novedad);
+  $('#caja-nuevos').hidden = !hayNuevos;
+  if(!hayNuevos) $('#f-nuevos').checked = false;
+  $('#f-tipo').innerHTML = '<option value="">Cualquier petición</option>' +
+    tipos.map(t => `<option value="${esc(t)}">${esc(ETIQUETA[t] || t)}</option>`).join('');
+}
+
+['#f-cliente','#f-prioridad','#f-tipo','#f-texto','#f-nuevos'].forEach(
+  s => $(s).oninput = () => { visibles = TRAMO; pintar(); });
+function cerrarInfo(){
+  $('#panel-info').hidden = true;
+  $('#info').ariaExpanded = 'false';
+}
+$('#info').onclick = () => {
+  const p = $('#panel-info'), abierto = !p.hidden;
+  p.hidden = abierto;
+  $('#info').ariaExpanded = String(!abierto);
+  if(!p.hidden) $('#cerrar-info').focus();
+};
+$('#cerrar-info').onclick = () => { cerrarInfo(); $('#info').focus(); };
+
+function cerrarDetalle(){
+  sel = null;
+  document.querySelectorAll('#lista tbody tr').forEach(tr => tr.ariaSelected = 'false');
+  $('#detalle').innerHTML = '<p class="apagado">Selecciona una fila para ver el pedido y los correos que lo justifican.</p>';
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(!$('#panel-info').hidden) cerrarInfo();
+  else if(sel !== null) cerrarDetalle();
+});
+$('#tab-acc').onclick = () => cambiar('acc');
+$('#tab-req').onclick = () => cambiar('req');
+function cambiar(v){
+  vista = v; sel = null; visibles = TRAMO;
+  $('#tab-acc').ariaSelected = v === 'acc'; $('#tab-req').ariaSelected = v === 'req';
+  $('#detalle').innerHTML = '<p class="apagado">Selecciona una fila.</p>';
+  pintar();
+}
+
+function filtradas(){
+  const cli = $('#f-cliente').value, pr = $('#f-prioridad').value,
+        tp = $('#f-tipo').value, tx = $('#f-texto').value.toLowerCase().trim();
+  if(vista === 'req'){
+    return ordenar(datos.requiere_decision.filter(r =>
+      (!cli || r.cliente === cli) &&
+      (!tx || (r.pedido_id||'').toLowerCase().includes(tx) || (r.cliente||'').toLowerCase().includes(tx))));
+  }
+  const soloNuevos = $('#f-nuevos').checked;
+  let f = datos.accionables.filter(a =>
+    (!soloNuevos || a.novedad) &&
+    (!cli || a.cliente === cli) && (!pr || nivel(a.puntuacion) === pr) &&
+    (!tp || a.intencion === tp) &&
+    (!tx || a.pedido_id.toLowerCase().includes(tx) || (a.cliente||'').toLowerCase().includes(tx)));
+  return ordenar(f);
+}
+
+function ordenar(f){
+  const {col, asc} = orden();
+  return f.sort((x,y) => {
+    const a = x[col], b = y[col];
+    if(a === b) return 0;
+    if(a === null || a === undefined) return 1;
+    if(b === null || b === undefined) return -1;
+    return (a > b ? 1 : -1) * (asc ? 1 : -1);
+  });
+}
+
+function pintar(){
+  if(!datos) return;
+  const f = filtradas();
+  if(!f.length){ $('#lista').innerHTML = '<p class="vacio">No hay casos con estos filtros. Prueba a quitar alguno.</p>'; return; }
+  const tramo = f.slice(0, visibles);
+  const pie = f.length > tramo.length
+    ? `<div class="pie">Mostrando ${tramo.length.toLocaleString('es')} de ${f.length.toLocaleString('es')} casos
+         <button id="mas">Mostrar ${Math.min(TRAMO, f.length - tramo.length)} más</button>
+         <button id="todos">Mostrar todos</button></div>`
+    : `<div class="pie">${f.length.toLocaleString('es')} caso${f.length===1?'':'s'}</div>`;
+  $('#lista').innerHTML = (vista === 'acc' ? tablaAcc(tramo) : tablaReq(tramo)) + pie;
+  const mas = $('#mas'), todos = $('#todos');
+  if(mas) mas.onclick = () => { visibles += TRAMO; pintar(); };
+  if(todos) todos.onclick = () => { visibles = f.length; pintar(); };
+  document.querySelectorAll('#lista tbody tr').forEach(tr => {
+    tr.tabIndex = 0;
+    tr.onclick = () => seleccionar(+tr.dataset.i);
+    tr.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); seleccionar(+tr.dataset.i); } };
+  });
+  document.querySelectorAll('#lista th[data-col]').forEach(th => th.onclick = () => {
+    const c = th.dataset.col;
+    const o = orden();
+    ordenes[vista] = {col:c, asc: o.col === c ? !o.asc : false};
+    visibles = TRAMO; pintar();
+  });
+}
+
+function tablaAcc(f){
+  const filas = f.map((a,i) => `
+    <tr data-i="${i}" class="${a.revisado?'revisado ':''}${a.novedad?'es-nuevo':''}" aria-selected="${sel===i}">
+      <td class="filo"><span class="marca ${nivel(a.puntuacion)}"></span>${a.puntuacion}</td>
+      <td>${esc(a.pedido_id)}<span class="apagado"> / ${a.linea_id}</span>${a.novedad?'<span class="nuevo">nuevo</span>':''}</td>
+      <td>${esc(a.cliente)}</td>
+      <td><span class="swatch" style="background:${colorHex(a.color)}"></span>${esc(a.sku)} ${esc(a.talla)}</td>
+      <td class="num">${a.ya_servida?'<span class="apagado">servida</span>':a.uds_pendientes}${a.conflicto_uds?' <span class="aviso-dato" title="Unidades pedidas contradictorias en el ERP">△</span>':''}${a.sobreservido?' <span class="aviso-dato" title="Enviadas superan a pedidas">△</span>':''}</td>
+      <td>${a.fecha_compromiso ? esc(a.fecha_compromiso.slice(0,10)) : '<span class="apagado">sin fecha</span>'}</td>
+      <td>${a.intencion === 'sin_correo' ? '<span class="apagado">sin correo</span>' : esc(ETIQUETA[a.intencion] || a.intencion)}</td>
+      <td class="apagado">${esc(a.motivo)}</td>
+      <td class="accion-celda">${esc(a.accion_propuesta)}</td>
+    </tr>`).join('');
+  const cols = [
+    ['puntuacion','Prioridad',''], ['pedido_id','Pedido / línea',''],
+    ['cliente','Cliente',''], [null,'Artículo',''],
+    ['uds_pendientes','Pendientes','num'], ['fecha_compromiso','Compromiso',''],
+    ['intencion','Petición',''], [null,'Motivo',''], [null,'Acción propuesta',''],
+  ];
+  return `<table><thead><tr>${cabecera(cols)}</tr></thead><tbody>${filas}</tbody></table>`;
+}
+
+function cabecera(cols){
+  const o = orden();
+  return cols.map(([c,t,cls]) => c
+    ? `<th data-col="${c}" class="${cls||''}"${o.col===c?` aria-sort="${o.asc?'ascending':'descending'}"`:''}>${t}<span class="chevron"></span></th>`
+    : `<th class="${cls||''}">${t}</th>`).join('');
+}
+
+function tablaReq(f){
+  const filas = f.map((r,i) => `
+    <tr data-i="${i}" aria-selected="${sel===i}">
+      <td>${r.pedido_id ? esc(r.pedido_id) + (r.linea_id!=null?` <span class="apagado">/ ${r.linea_id}</span>`:'') : '<span class="apagado">—</span>'}</td>
+      <td>${esc(r.cliente)}</td>
+      <td>${esc(r.motivo)}</td>
+      <td class="accion-celda">${esc(r.accion_propuesta)}</td>
+      <td class="apagado">${r.received_at ? esc(r.received_at.slice(0,16)) : ''}</td>
+    </tr>`).join('');
+  const cols = [
+    ['pedido_id','Pedido / línea'], ['cliente','Cliente'], ['motivo','Motivo'],
+    [null,'Acción propuesta'], ['received_at','Recibido'],
+  ];
+  return `<table><thead><tr>${cabecera(cols)}</tr></thead><tbody>${filas}</tbody></table>`;
+}
+
+function seleccionar(i){
+  sel = i;
+  document.querySelectorAll('#lista tbody tr').forEach(tr => {
+    tr.ariaSelected = String(+tr.dataset.i === i);
+  });
+  const r = filtradas()[i];
+  $('#detalle').innerHTML = vista === 'acc' ? detalleAcc(r) : detalleReq(r);
+  $('#cerrar-detalle').onclick = cerrarDetalle;
+  const chk = $('#marcar');
+  if(chk) chk.onchange = async () => {
+    await fetch('/api/marcar', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({caso_id:r.caso_id, revisado:chk.checked})});
+    const a = datos.accionables.find(x => x.caso_id === r.caso_id);
+    if(a) a.revisado = chk.checked;
+    r.revisado = chk.checked;
+    const fila = document.querySelector(`#lista tbody tr[data-i="${sel}"]`);
+    if(fila) fila.classList.toggle('revisado', chk.checked);
+  };
+}
+
+function detalleAcc(a){
+  const correos = datos.correos.filter(c => c.caso_id === a.caso_id)
+    .sort((x,y) => (x.received_at > y.received_at ? 1 : -1));
+  return `
+  <button class="cerrar" id="cerrar-detalle" aria-label="Cerrar detalle">&times;</button>
+  <h2>${esc(a.pedido_id)} / ${a.linea_id}${a.novedad?'<span class="nuevo">nuevo</span>':''}</h2>
+  <p class="sub">${esc(a.cliente)} · ${esc(a.sku)} ${esc(a.color)} ${esc(a.talla)}</p>
+  <div class="accion"><strong>Acción propuesta</strong><br>${esc(a.accion_propuesta)}</div>
+  <dl>
+    <dt>Pedidas</dt><dd>${a.uds_pedidas}${a.conflicto_uds?` <span class="aviso-dato">△ el ERP contiene ${a.uds_pedidas_min} y ${a.uds_pedidas_max}; se usa el mayor, confirmar en Navision</span>`:''}</dd>
+    <dt>Enviadas</dt><dd>${a.uds_enviadas}${a.sobreservido?' <span class="aviso-dato">△ superan a las pedidas</span>':''}</dd>
+    <dt>Pendientes</dt><dd><strong>${a.ya_servida ? '0 · línea ya servida' : a.uds_pendientes}</strong></dd>
+    <dt>Compromiso</dt><dd>${a.fecha_compromiso ? esc(a.fecha_compromiso.slice(0,10)) : 'sin fecha en el ERP'}</dd>
+    <dt>Precio</dt><dd>${a.precio_unitario_eur ?? 'desconocido'}</dd>
+    <dt>Prioridad</dt><dd>${a.puntuacion} <span class="desglose">(fecha ${a.pts_fecha} + petición ${a.pts_peticion} + volumen ${a.pts_volumen})</span></dd>
+  </dl>
+  <label class="casilla"><input type="checkbox" id="marcar" ${a.revisado?'checked':''}> Marcar como revisado</label>
+  <h2 style="margin-top:18px">Correos (${correos.length})</h2>
+  ${correos.length ? correos.map(c => `
+    <div class="correo">
+      <div class="meta">
+        <span>${esc(c.received_at?.slice(0,16))}</span>
+        <span>${esc(c.remitente)}</span>
+        <span>${esc(ETIQUETA[c.intencion] || c.intencion)}</span>
+        ${c.verificado ? '' : '<span class="aviso-dato">remitente sin verificar</span>'}
+        ${c.anulado_por_rectificacion ? '<span class="aviso-dato">anulado por una rectificación posterior</span>' : ''}
+        ${c.origen_cruce === 'difuso_unico' ? '<span class="apagado">cruzado por artículo</span>' : ''}
+      </div>
+      <div class="cuerpo ${c.anulado_por_rectificacion?'tachado':''}"><strong>${esc(c.subject)}</strong>\n${esc(c.body)}</div>
+    </div>`).join('') : '<p class="apagado">Ningún correo menciona esta línea.</p>'}`;
+}
+
+function detalleReq(r){
+  return `
+  <button class="cerrar" id="cerrar-detalle" aria-label="Cerrar detalle">&times;</button>
+  <h2>${r.pedido_id ? esc(r.pedido_id) + (r.linea_id!=null?' / '+r.linea_id:'') : 'Sin pedido identificado'}</h2>
+  <p class="sub">${esc(r.cliente)}</p>
+  <div class="accion"><strong>${esc(r.motivo)}</strong><br>${esc(r.accion_propuesta)}</div>
+  <dl>
+    ${r.remitente ? `<dt>Remitente</dt><dd>${esc(r.remitente)}</dd>` : ''}
+    ${r.email_registrado ? `<dt>Contacto registrado</dt><dd>${esc(r.email_registrado)}</dd>` : ''}
+    ${r.candidatos ? `<dt>Candidatos</dt><dd>${esc(r.candidatos.replaceAll(';', ', '))}</dd>` : ''}
+    ${r.received_at ? `<dt>Recibido</dt><dd>${esc(r.received_at.slice(0,16))}</dd>` : ''}
+  </dl>
+  ${r.body ? `<div class="correo"><div class="cuerpo"><strong>${esc(r.subject)}</strong>\n${esc(r.body)}</div></div>` : ''}`;
+}
+
+function colorHex(c){
+  const m = {Blanco:'#fff', Negro:'#222', Gris:'#9a9a9a', Azul:'#3b5b9b', Verde:'#4a7a4a',
+    Rosa:'#d98da8', Beige:'#d9c9a8', Naranja:'#d98a3b'};
+  return m[c] || '#ccc';
+}
+</script>
+</body>
+</html>
